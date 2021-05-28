@@ -25,7 +25,6 @@
 #include <syscall.h>
 #include <plugins/plugins.h>
 #include <tracing/tracing.h>
-#include "rfcapi.h"
 
 // telemetry
 #ifdef ENABLE_TELEMETRY_LOGGING
@@ -348,7 +347,6 @@ namespace Utils
 
     bool isPluginActivated(const char* callSign);
 
-    bool getRFCConfig(char* paramName, RFC_ParamData_t& paramOutput);
     bool isValidInt(char* x);
 
     //class for std::thread RAII
