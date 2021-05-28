@@ -383,7 +383,7 @@ namespace Utils
 #endif
         };
 
-        static void sendError(char* format, ...)
+        static void sendError(const char* format, ...)
         {
 #ifdef ENABLE_TELEMETRY_LOGGING
             va_list parameters;
