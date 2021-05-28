@@ -29,6 +29,8 @@
 #include "irMgr.h"
 #include "pwrMgr.h"
 
+#define DISPLAY_SETTINGS_DONT_USE_CEC_SINK
+
 namespace WPEFramework {
 
     namespace Plugin {
@@ -134,9 +136,11 @@ namespace WPEFramework {
             void activeInputChanged(bool activeInput);
             void connectedVideoDisplaysUpdated(int hdmiHotPlugEvent);
             void connectedAudioPortUpdated (int iAudioPortType, bool isPortConnected);
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 	    void onARCInitiationEventHandler(const JsonObject& parameters);
             void onARCTerminationEventHandler(const JsonObject& parameters);
 	    void onShortAudioDescriptorEventHandler(const JsonObject& parameters);
+#endif
             //End events
         public:
             DisplaySettings();
@@ -159,10 +163,12 @@ namespace WPEFramework {
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement>> getHdmiCecSinkPlugin();
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement> > m_client;
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement>> getSystemPlugin();
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 	    uint32_t subscribeForHdmiCecSinkEvent(const char* eventName);
 	    bool setUpHdmiCecSinkArcRouting (bool arcEnable);
 	    bool requestShortAudioDescriptor();
 	    void onTimer();
+#endif
 
 	    TpTimer m_timer;
             bool m_subscribed;

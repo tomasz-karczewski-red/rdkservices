@@ -54,14 +54,17 @@ using namespace std;
 
 #define HDMI_HOT_PLUG_EVENT_CONNECTED 0
 
-#define HDMI_IN_ARC_PORT_ID 1
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 
+#define HDMI_IN_ARC_PORT_ID 1
 
 #define HDMICECSINK_CALLSIGN "org.rdk.HdmiCecSink"
 #define HDMICECSINK_CALLSIGN_VER HDMICECSINK_CALLSIGN".1"
 #define HDMICECSINK_ARC_INITIATION_EVENT "arcInitiationEvent"
 #define HDMICECSINK_ARC_TERMINATION_EVENT "arcTerminationEvent"
 #define HDMICECSINK_SHORT_AUDIO_DESCRIPTOR_EVENT "shortAudiodesciptorEvent"
+#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
+
 #define SERVER_DETAILS  "127.0.0.1:9998"
 #define WARMING_UP_TIME_IN_SECONDS 5
 #define RECONNECTION_TIME_IN_MILLISECONDS 5500
@@ -210,8 +213,11 @@ namespace WPEFramework {
             registerMethod("getSettopMS12Capabilities", &DisplaySettings::getSettopMS12Capabilities, this);
             registerMethod("getSettopAudioCapabilities", &DisplaySettings::getSettopAudioCapabilities, this);
 
+
 	    m_subscribed = false; //HdmiCecSink event subscription
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 	    m_timer.connect(std::bind(&DisplaySettings::onTimer, this));
+#endif
         }
 
         DisplaySettings::~DisplaySettings()
@@ -256,7 +262,9 @@ namespace WPEFramework {
                             m_timer.stop();
                         }
 
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                         Utils::activatePlugin(HDMICECSINK_CALLSIGN);
+#endif
 
                         //Start the timer only if the device supports HDMI_ARC
                         LOGINFO("Starting the timer");
@@ -526,6 +534,7 @@ namespace WPEFramework {
         }
 	    case IARM_BUS_DSMGR_EVENT_HDMI_IN_HOTPLUG :
 		{
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                     IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
                     int hdmiin_hotplug_port = eventData->data.hdmi_in_connect.port;
                     bool hdmiin_hotplug_conn = eventData->data.hdmi_in_connect.isPortConnected;
@@ -541,6 +550,7 @@ namespace WPEFramework {
                 DisplaySettings::_instance->connectedAudioPortUpdated(dsAUDIOPORT_TYPE_HDMI_ARC, hdmiin_hotplug_conn);
 
                         JsonObject audioOutputPortConfig = DisplaySettings::_instance->getAudioOutputPortConfig();
+
 			if (audioOutputPortConfig.HasLabel("HDMI_ARC")) {
                             try {
                                     arc_port_enabled = audioOutputPortConfig["HDMI_ARC"].Boolean();
@@ -609,7 +619,7 @@ namespace WPEFramework {
 	                }
 
 	            }// HDMI_IN_ARC_PORT_ID
-
+#endif // ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 		}
 	        break;
             default:
@@ -1149,6 +1159,7 @@ namespace WPEFramework {
 			        int types = dsAUDIOARCSUPPORT_NONE;
                                 aPort.getSupportedARCTypes(&types);
 
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 				if(types & dsAUDIOARCSUPPORT_eARC) {
 				    aPort.setStereoAuto(stereoAuto, persist); //setStereoAuto true
 				}
@@ -1161,6 +1172,7 @@ namespace WPEFramework {
                                         LOGINFO("setSoundMode Auto: requestShortAudioDescriptor successful\n");
                                     }
 				}
+#endif
 			   }
 			}
                         else if (aPort.getType().getId() == device::AudioOutputPortType::kSPDIF)
@@ -2677,6 +2689,7 @@ namespace WPEFramework {
         }
 
 
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
         bool DisplaySettings::setUpHdmiCecSinkArcRouting (bool arcEnable)
         {
             bool success = true;
@@ -2740,7 +2753,7 @@ namespace WPEFramework {
 
             return success;
         }
-
+#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
         uint32_t DisplaySettings::setEnableAudioPort (const JsonObject& parameters, JsonObject& response)
         {   //TODO: Handle other audio ports. Currently only supports HDMI ARC/eARC
             LOGINFOMETHOD();
@@ -2794,6 +2807,7 @@ namespace WPEFramework {
                             if(types & dsAUDIOARCSUPPORT_eARC) {
                                 aPort.setStereoAuto(true,true);
                             }
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                             else if (types & dsAUDIOARCSUPPORT_ARC) {
                                 if (!DisplaySettings::_instance->requestShortAudioDescriptor()) {
                                     LOGERR("DisplaySettings::setEnableAudioPort (ARC): requestShortAudioDescriptor failed !!!\n");;
@@ -2802,6 +2816,7 @@ namespace WPEFramework {
                                     LOGINFO("DisplaySettings::setEnableAudioPort (ARC): requestShortAudioDescriptor successful\n");
                                 }
                             }
+#endif
                         }
                         else{
                             device::AudioStereoMode mode = device::AudioStereoMode::kStereo;  //default to stereo
@@ -2820,6 +2835,7 @@ namespace WPEFramework {
                             aPort.enableARC(dsAUDIOARCSUPPORT_eARC, false);
                         }
                     }
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                     else if(types & dsAUDIOARCSUPPORT_ARC) {
                         if (!setUpHdmiCecSinkArcRouting (pEnable)) {
                             LOGERR("DisplaySettings::setEnableAudioPort setUpHdmiCecSinkArcRouting failed !!!\n");;
@@ -2828,6 +2844,7 @@ namespace WPEFramework {
                             LOGINFO("DisplaySettings::setEnableAudioPort setUpHdmiCecSinkArcRouting successful");
                         }
 	                }
+#endif
                     else {
                         LOGWARN("DisplaySettings::setEnableAudioPort Connected device doesn't have ARC/eARC capability \n");
                     }
@@ -2853,6 +2870,7 @@ namespace WPEFramework {
             try
             {
 		bool isEnabled =  false;
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 		//Devicesettings returns exact HDMI ARC audio routing enable status
 		//From thunder plugin's perspective HDMI ARC status must be the last user set value
 		// even if ARC device is not connected. Audio routing will automatically start when the device is connected.
@@ -2865,6 +2883,10 @@ namespace WPEFramework {
                     device::AudioOutputPort aPort = device::Host::getInstance().getAudioOutputPort(audioPort);
                     isEnabled = aPort.isEnabled();
 		}
+#else
+        device::AudioOutputPort aPort = device::Host::getInstance().getAudioOutputPort(audioPort);
+        isEnabled = aPort.isEnabled();
+#endif
                 response["enable"] = isEnabled;
                 LOGWARN ("Thunder sending response to get state enable for audioPort %s is: %s", audioPort.c_str(), (isEnabled?("TRUE"):("FALSE"))); 
             }
@@ -2932,6 +2954,7 @@ namespace WPEFramework {
             }
         }
 
+#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
         // Event management
         // 1.
         uint32_t DisplaySettings::subscribeForHdmiCecSinkEvent(const char* eventName)
@@ -3132,7 +3155,7 @@ namespace WPEFramework {
          // Event management end
 
         // Thunder plugins communication end
-
+#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 
         uint32_t DisplaySettings::getTVHDRCapabilities (const JsonObject& parameters, JsonObject& response) 
         {   //sample servicemanager response:
