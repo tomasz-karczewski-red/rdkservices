@@ -213,6 +213,18 @@ namespace WPEFramework {
             registerMethod("getSettopMS12Capabilities", &DisplaySettings::getSettopMS12Capabilities, this);
             registerMethod("getSettopAudioCapabilities", &DisplaySettings::getSettopAudioCapabilities, this);
 
+            // LGI addons
+            registerMethod("setOutputFrameRatePreference", &DisplaySettings::setOutputFrameRatePreference, this);
+            registerMethod("setAudioProcessingHint", &DisplaySettings::setAudioProcessingHint, this);
+            registerMethod("getAudioOutputEncoding", &DisplaySettings::getAudioOutputEncoding, this);
+            registerMethod("getFollowColorSpace", &DisplaySettings::getFollowColorSpace, this);
+            registerMethod("setFollowColorSpace", &DisplaySettings::setFollowColorSpace, this);
+            registerMethod("getPreferredOutputColorSpace", &DisplaySettings::getPreferredOutputColorSpace, this);
+            registerMethod("setPreferredOutputColorSpace", &DisplaySettings::setPreferredOutputColorSpace, this);
+            registerMethod("getHDRGfxColorSpace", &DisplaySettings::getHDRGfxColorSpace, this);
+            registerMethod("setHDRGfxColorSpace", &DisplaySettings::setHDRGfxColorSpace, this);
+            // TODO: rxSenseHdmiChanged
+            // LGI addons end
 
 	    m_subscribed = false; //HdmiCecSink event subscription
 #ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
@@ -1107,6 +1119,8 @@ namespace WPEFramework {
             }
             else if (soundMode == "dolby digital 5.1")
                 mode = device::AudioStereoMode::kSurround;
+            else if (soundMode == "follow")
+                mode = device::AudioStereoMode::kFollow;
             else
             {
                 LOGWARN("Sound mode '%s' is empty or incompatible with known values, hence sound mode will not changed!", soundMode.c_str());
@@ -1305,7 +1319,7 @@ namespace WPEFramework {
             LOGINFOMETHOD();
 
             string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
-            bool active = true;
+            bool active = false;
             try
             {
                 device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
@@ -3439,6 +3453,69 @@ namespace WPEFramework {
                 return false;
 
             return true;
+        }
+
+        uint32_t DisplaySettings::setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response)
+        {
+            // (const bool followContent);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::setAudioProcessingHint(const JsonObject& parameters, JsonObject& response)
+        {
+            // (QString audioPort, QString audioMode, QString audioDelayMs);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response)
+        {
+            //(QString audioPort);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::getFollowColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            //(QString videoDisplay) const;
+            bool success  = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::setFollowColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            // (QString videoDisplay, bool followCOlorSpace);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            // (const QString videoDisplay);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            //(const QString videoDisplay, const QString colorSpaces);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            // (QString videoPort, int &y, int &cr, int &cb);
+            bool success = false;
+            returnResponse(success);
+        }
+
+        uint32_t DisplaySettings::setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
+        {
+            // (QString videoPort, int y, int cr, int cb);
+            bool success = false;
+            returnResponse(success);
         }
 
     } // namespace Plugin

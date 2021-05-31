@@ -126,6 +126,17 @@ namespace WPEFramework {
             uint32_t getSettopMS12Capabilities(const JsonObject& parameters, JsonObject& response);
             uint32_t getSettopAudioCapabilities(const JsonObject& parameters, JsonObject& response);
             uint32_t getEnableAudioPort(const JsonObject& parameters, JsonObject& response);
+            // LGI addons begin
+            uint32_t setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response); // (const bool followContent);
+            uint32_t setAudioProcessingHint(const JsonObject& parameters, JsonObject& response); // (QString audioPort, QString audioMode, QString audioDelayMs);
+            uint32_t getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response); //(QString audioPort);
+            uint32_t getFollowColorSpace(const JsonObject& parameters, JsonObject& response); //(QString videoDisplay) const;
+            uint32_t setFollowColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoDisplay, bool followCOlorSpace);
+            uint32_t getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); // (const QString videoDisplay);
+            uint32_t setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); //(const QString videoDisplay, const QString colorSpaces);
+            uint32_t getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int &y, int &cr, int &cb);
+            uint32_t setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int y, int cr, int cb);
+            // LGI addons end
             void InitAudioPorts();
             //End methods
 
