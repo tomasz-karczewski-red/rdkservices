@@ -3455,66 +3455,252 @@ namespace WPEFramework {
             return true;
         }
 
+        static bool parseQBool(const std::string& str) {
+            // https://doc.qt.io/qt-5/qvariant.html#toBool:
+            // 'Returns true if (...) lower-case content is not one of the following: empty, "0" or "false"; otherwise returns false.'
+            string lowercase_string;
+            std::transform(str.begin(),
+                           str.end(),
+                           lowercase_string.begin(),
+                           ::tolower);
+            return !(lowercase_string.empty() || lowercase_string == "false" || lowercase_string == "0");
+        }
+
         uint32_t DisplaySettings::setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response)
         {
-            // (const bool followContent);
+            // servicemanager params: (const bool followContent);
+            LOGINFOMETHOD();
             bool success = false;
+            returnIfParamNotFound(parameters, "followContent");
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+            const bool followContent = parseQBool(parameters["followContent"].String());
+
+            try {
+                device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                vPort.setOutputFrameRatePreference(followContent);
+                success = true;
+            }
+            catch (const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::setAudioProcessingHint(const JsonObject& parameters, JsonObject& response)
         {
-            // (QString audioPort, QString audioMode, QString audioDelayMs);
+            // servicemanager params: (QString audioPort, QString audioMode, QString audioDelayMs);
+            LOGINFOMETHOD();
             bool success = false;
+            returnIfParamNotFound(parameters, "audioMode");
+            const string audioPort = parameters.HasLabel("audioPort") ? parameters["audioPort"].String() : "HDMI0";
+            // TODO: checkPortName?
+
+            int64_t _delayMs = -1;
+            getDefaultNumberParameter("audioDelayMs", _delayMs, -1);
+            if (_delayMs > -1 && _delayMs <= std::numeric_limits<uint32_t>::max()) {
+                const string audioMode = parameters["audioMode"].String();
+                const uint32_t delayMs = _delayMs;
+                try
+                {
+                    ::device::AudioOutputPort &aPort = ::device::AudioOutputPortConfig::getInstance().getPort(audioPort);
+                    aPort.setAudioDelayHint(delayMs, audioMode);
+                    success = true;
+                }
+                catch(const device::Exception& err)
+                {
+                    LOG_DEVICE_EXCEPTION0();
+                }
+            }
+            else
+            {
+                LOGWARN("setAudioProcessingHint: audioDelayMs value %lld out of uint32_t bounds; not executed", _delayMs);
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response)
         {
-            //(QString audioPort);
+            // servicemanager params: (QString audioPort);
+            LOGINFOMETHOD();
             bool success = false;
+
+            const string audioPort = parameters.HasLabel("audioPort") ? parameters["audioPort"].String() : "HDMI0";
+            // TODO: checkPortName?
+
+            try
+            {
+                ::device::AudioOutputPort &aPort = ::device::AudioOutputPortConfig::getInstance().getPort(audioPort);
+                const ::device::AudioEncoding &aEnc = aPort.getEncoding();
+                response["encoding"] = aEnc.getName();
+                success = true;
+            }
+            catch(const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::getFollowColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            //(QString videoDisplay) const;
+            // servicemanager params: (QString videoDisplay) const;
+            LOGINFOMETHOD();
             bool success  = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+
+            try
+            {
+                device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                response["followColorSpace"] = vPort.getFollowColorSpace();
+                success  = true;
+            }
+            catch(const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::setFollowColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            // (QString videoDisplay, bool followCOlorSpace);
+            // servicemanager params: (QString videoDisplay, bool followCOlorSpace);
+            LOGINFOMETHOD();
             bool success = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+            returnIfParamNotFound(parameters, "followColorSpace");
+
+            const bool followColorSpace = parseQBool(parameters["followColorSpace"].String());
+
+            try
+            {
+                device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                vPort.setFollowColorSpace(followColorSpace);
+                success = true;
+            }
+            catch(const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            // (const QString videoDisplay);
+            // servicemanager params: (const QString videoDisplay);
+            LOGINFOMETHOD();
             bool success = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+
+            try
+            {
+                std::string result;
+                device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                if (vPort.getPreferredOutputColorSpace(result))
+                {
+                    response["preferredOutputColorSpace"] = result;
+                    success = true;
+                }
+            }
+            catch (const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            //(const QString videoDisplay, const QString colorSpaces);
+            // servicemanager params: (const QString videoDisplay, const QString colorSpaces);
+            LOGINFOMETHOD();
             bool success = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+
+            returnIfParamNotFound(parameters, "colorSpace");
+            const string colorSpace = parameters["colorSpace"].String();
+
+            try
+            {
+                device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                success = vPort.setPreferredOutputColorSpace(colorSpace);
+            }
+            catch (const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            // (QString videoPort, int &y, int &cr, int &cb);
+            // servicemanager params: (QString videoPort, int &y, int &cr, int &cb);
+            LOGINFOMETHOD();
             bool success = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+
+            try {
+                int16_t y, cr, cb;
+                device::VideoOutputPort vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+
+                vPort.getType().getInstance(device::VideoOutputPortType::kHDMI).GetHDRGfxColorSpace(&y, &cr, &cb);
+                response["y"] = y;
+                response["cr"] = cr;
+                response["cb"] = cb;
+                success = true;
+            }
+
+            catch(const device::Exception& err)
+            {
+                LOG_DEVICE_EXCEPTION0();
+            }
+
+
             returnResponse(success);
         }
 
         uint32_t DisplaySettings::setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
         {
-            // (QString videoPort, int y, int cr, int cb);
+            // servicemanager params: (QString videoPort, int y, int cr, int cb);
+            LOGINFOMETHOD();
             bool success = false;
+            const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
+
+            returnIfParamNotFound(parameters, "y");
+            returnIfParamNotFound(parameters, "cr");
+            returnIfParamNotFound(parameters, "cb");
+
+            int64_t y, cr, cb;
+            getDefaultNumberParameter("y", y, std::numeric_limits<int64_t>::max());
+            getDefaultNumberParameter("cr", cr, std::numeric_limits<int64_t>::max());
+            getDefaultNumberParameter("cb", cb, std::numeric_limits<int64_t>::max());
+
+            if (y < std::numeric_limits<int16_t>::min() || y > std::numeric_limits<int16_t>::max()
+                || cr < std::numeric_limits<int16_t>::min() || cr > std::numeric_limits<int16_t>::max()
+                || cb < std::numeric_limits<int16_t>::min() || cb > std::numeric_limits<int16_t>::max())
+            {
+                LOGWARN("setHDRGfxColorSpace: some of values: y=%lld cr=%lld cb=%lld out of int16_t bounds; not executed", y,cr,cb);
+            }
+            else {
+                int16_t _y = y, _cr = cr, _cb = cb;
+                try {
+                    device::VideoOutputPort vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
+                    vPort.getType().getInstance(device::VideoOutputPortType::kHDMI).SetHDRGfxColorSpace(&_y, &_cr, &_cb);
+                    success = true;
+                }
+
+                catch(const device::Exception& err)
+                {
+                    LOG_DEVICE_EXCEPTION0();
+                }
+            }
+
             returnResponse(success);
         }
 

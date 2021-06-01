@@ -1,0 +1,9 @@
+{
+ "locator":"libWPEFrameworkDisplaySettings.so",
+ "classname":"DisplaySettings",
+ "precondition":[
+  "Platform"
+ ],
+ "callsign":"org.rdk.DisplaySettings",
+ "autostart":false
+}
