@@ -3603,7 +3603,15 @@ namespace WPEFramework {
                 device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
                 if (vPort.getPreferredOutputColorSpace(result))
                 {
-                    response["preferredOutputColorSpace"] = result;
+                    // the result is comma-separated list of values, like 'BT2020_NCL,BT2020_CL,BT709'
+                    string colorSpace;
+                    stringstream ss {result};
+                    vector<string> colorSpaces;
+                    while (getline(ss, colorSpace, ',')) {
+                        colorSpaces.push_back(colorSpace);
+                    }
+                    // response["preferredOutputColorSpace"] = result;
+                    setResponseArray(response, "preferredOutputColorSpaces", colorSpaces);
                     success = true;
                 }
             }
@@ -3622,13 +3630,22 @@ namespace WPEFramework {
             bool success = false;
             const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
 
-            returnIfParamNotFound(parameters, "colorSpace");
-            const string colorSpace = parameters["colorSpace"].String();
+            returnIfParamNotFound(parameters, "colorSpaces");
+            auto colorSpacesArr = parameters["colorSpaces"].Array();
+            auto colorSpaces = colorSpacesArr.Elements();
 
             try
             {
+                stringstream strColorSpaces;
+                bool first = true;
+                while (colorSpaces.Next()) {
+                    if (!first) strColorSpaces << ",";
+                    first = false;
+                    strColorSpaces << colorSpaces.Current().String();
+                }
+                printf("strColorSpaces: %s\n", strColorSpaces.str().c_str()); fflush(stdout);
                 device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
-                success = vPort.setPreferredOutputColorSpace(colorSpace);
+                success = vPort.setPreferredOutputColorSpace(strColorSpaces.str());
             }
             catch (const device::Exception& err)
             {
@@ -3660,7 +3677,6 @@ namespace WPEFramework {
             {
                 LOG_DEVICE_EXCEPTION0();
             }
-
 
             returnResponse(success);
         }
