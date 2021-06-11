@@ -180,7 +180,6 @@ public:
         LOGINFO();
         uint32_t ret =  (Core::ERROR_NONE);
         value = false;
-        return (Core::ERROR_NONE);
         try
         {
             device::VideoOutputPort vPort = device::Host::getInstance().getVideoOutputPort("HDMI0");
@@ -409,7 +408,7 @@ public:
             for (size_t i = 0; i < vPorts.size(); i++)
             {
                 device::VideoOutputPort &vPort = vPorts.at(i);
-                if (vPort.isDisplayConnected())
+                if (vPort.isDisplayConnected() && (vPort.getType() == device::VideoOutputPortType::kHDMI))
                 {
                     name = vPort.getName();
                     TRACE(Trace::Information, (_T("Connected video output port = %s"), name));
