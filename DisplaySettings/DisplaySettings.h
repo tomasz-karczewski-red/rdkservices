@@ -29,8 +29,6 @@
 #include "irMgr.h"
 #include "pwrMgr.h"
 
-#define DISPLAY_SETTINGS_DONT_USE_CEC_SINK
-
 namespace WPEFramework {
 
     namespace Plugin {
@@ -126,17 +124,6 @@ namespace WPEFramework {
             uint32_t getSettopMS12Capabilities(const JsonObject& parameters, JsonObject& response);
             uint32_t getSettopAudioCapabilities(const JsonObject& parameters, JsonObject& response);
             uint32_t getEnableAudioPort(const JsonObject& parameters, JsonObject& response);
-            // LGI addons begin
-            uint32_t setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response); // (const bool followContent);
-            uint32_t setAudioProcessingHint(const JsonObject& parameters, JsonObject& response); // (QString audioPort, QString audioMode, QString audioDelayMs);
-            uint32_t getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response); //(QString audioPort);
-            uint32_t getFollowColorSpace(const JsonObject& parameters, JsonObject& response); //(QString videoDisplay) const;
-            uint32_t setFollowColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoDisplay, bool followCOlorSpace);
-            uint32_t getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); // (const QString videoDisplay);
-            uint32_t setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); //(const QString videoDisplay, const QString colorSpaces);
-            uint32_t getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int &y, int &cr, int &cb);
-            uint32_t setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int y, int cr, int cb);
-            // LGI addons end
             void InitAudioPorts();
             //End methods
 
@@ -147,11 +134,9 @@ namespace WPEFramework {
             void activeInputChanged(bool activeInput);
             void connectedVideoDisplaysUpdated(int hdmiHotPlugEvent);
             void connectedAudioPortUpdated (int iAudioPortType, bool isPortConnected);
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 	    void onARCInitiationEventHandler(const JsonObject& parameters);
             void onARCTerminationEventHandler(const JsonObject& parameters);
 	    void onShortAudioDescriptorEventHandler(const JsonObject& parameters);
-#endif
             //End events
         public:
             DisplaySettings();
@@ -174,12 +159,10 @@ namespace WPEFramework {
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement>> getHdmiCecSinkPlugin();
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement> > m_client;
 	    std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement>> getSystemPlugin();
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 	    uint32_t subscribeForHdmiCecSinkEvent(const char* eventName);
 	    bool setUpHdmiCecSinkArcRouting (bool arcEnable);
 	    bool requestShortAudioDescriptor();
 	    void onTimer();
-#endif
 
 	    TpTimer m_timer;
             bool m_subscribed;
@@ -191,6 +174,21 @@ namespace WPEFramework {
         public:
             static DisplaySettings* _instance;
 
+        };
+
+        // all LGI new methods are grouped here
+        class DisplaySettingsLgiAddons : public DisplaySettings {
+            public:
+                DisplaySettingsLgiAddons();
+                uint32_t setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response); // (const bool followContent);
+                uint32_t setAudioProcessingHint(const JsonObject& parameters, JsonObject& response); // (QString audioPort, QString audioMode, QString audioDelayMs);
+                uint32_t getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response); //(QString audioPort);
+                uint32_t getFollowColorSpace(const JsonObject& parameters, JsonObject& response); //(QString videoDisplay) const;
+                uint32_t setFollowColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoDisplay, bool followCOlorSpace);
+                uint32_t getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); // (const QString videoDisplay);
+                uint32_t setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response); //(const QString videoDisplay, const QString colorSpaces);
+                uint32_t getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int &y, int &cr, int &cb);
+                uint32_t setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response); // (QString videoPort, int y, int cr, int cb);
         };
 	} // namespace Plugin
 } // namespace WPEFramework

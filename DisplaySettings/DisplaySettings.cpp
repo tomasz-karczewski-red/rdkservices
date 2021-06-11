@@ -52,19 +52,18 @@
 
 using namespace std;
 
+#define HDMICEC_SINK_NOT_SUPPORTED
+
 #define HDMI_HOT_PLUG_EVENT_CONNECTED 0
 
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
-
 #define HDMI_IN_ARC_PORT_ID 1
+
 
 #define HDMICECSINK_CALLSIGN "org.rdk.HdmiCecSink"
 #define HDMICECSINK_CALLSIGN_VER HDMICECSINK_CALLSIGN".1"
 #define HDMICECSINK_ARC_INITIATION_EVENT "arcInitiationEvent"
 #define HDMICECSINK_ARC_TERMINATION_EVENT "arcTerminationEvent"
 #define HDMICECSINK_SHORT_AUDIO_DESCRIPTOR_EVENT "shortAudiodesciptorEvent"
-#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
-
 #define SERVER_DETAILS  "127.0.0.1:9998"
 #define WARMING_UP_TIME_IN_SECONDS 5
 #define RECONNECTION_TIME_IN_MILLISECONDS 5500
@@ -132,7 +131,7 @@ namespace WPEFramework {
 
     namespace Plugin {
 
-        SERVICE_REGISTRATION(DisplaySettings, 1, 0);
+        SERVICE_REGISTRATION(DisplaySettingsLgiAddons, 1, 0);
 
         DisplaySettings* DisplaySettings::_instance = nullptr;
         IARM_Bus_PWRMgr_PowerState_t DisplaySettings::m_powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
@@ -213,22 +212,12 @@ namespace WPEFramework {
             registerMethod("getSettopMS12Capabilities", &DisplaySettings::getSettopMS12Capabilities, this);
             registerMethod("getSettopAudioCapabilities", &DisplaySettings::getSettopAudioCapabilities, this);
 
-            // LGI addons
-            registerMethod("setOutputFrameRatePreference", &DisplaySettings::setOutputFrameRatePreference, this);
-            registerMethod("setAudioProcessingHint", &DisplaySettings::setAudioProcessingHint, this);
-            registerMethod("getAudioOutputEncoding", &DisplaySettings::getAudioOutputEncoding, this);
-            registerMethod("getFollowColorSpace", &DisplaySettings::getFollowColorSpace, this);
-            registerMethod("setFollowColorSpace", &DisplaySettings::setFollowColorSpace, this);
-            registerMethod("getPreferredOutputColorSpace", &DisplaySettings::getPreferredOutputColorSpace, this);
-            registerMethod("setPreferredOutputColorSpace", &DisplaySettings::setPreferredOutputColorSpace, this);
-            registerMethod("getHDRGfxColorSpace", &DisplaySettings::getHDRGfxColorSpace, this);
-            registerMethod("setHDRGfxColorSpace", &DisplaySettings::setHDRGfxColorSpace, this);
-            // TODO: rxSenseHdmiChanged
-            // LGI addons end
-
-	    m_subscribed = false; //HdmiCecSink event subscription
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
-	    m_timer.connect(std::bind(&DisplaySettings::onTimer, this));
+            m_subscribed = false; //HdmiCecSink event subscription
+#ifdef HDMICEC_SINK_NOT_SUPPORTED
+            LOGWARN("HdmiCecSink is not available; HDMI_ARC events will not be set up");
+            LOGWARN("do not expect ARC to fully work !");
+#else
+    	    m_timer.connect(std::bind(&DisplaySettings::onTimer, this));
 #endif
         }
 
@@ -268,19 +257,18 @@ namespace WPEFramework {
                         else {
                             m_audioOutputPortConfig["HDMI_ARC"] = false;
                         }
-
+#ifndef HDMICEC_SINK_NOT_SUPPORTED
                         //Stop timer if its already running
                         if(m_timer.isActive()) {
                             m_timer.stop();
                         }
-
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                         Utils::activatePlugin(HDMICECSINK_CALLSIGN);
-#endif
-
                         //Start the timer only if the device supports HDMI_ARC
                         LOGINFO("Starting the timer");
                         m_timer.start(RECONNECTION_TIME_IN_MILLISECONDS);
+#else
+                        LOGWARN("HdmiCecSink not available; HDMI_ARC events will not be set up");
+#endif
                     }
                     else {
                         JsonObject aPortHdmiEnableResult;
@@ -546,7 +534,6 @@ namespace WPEFramework {
         }
 	    case IARM_BUS_DSMGR_EVENT_HDMI_IN_HOTPLUG :
 		{
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                     IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
                     int hdmiin_hotplug_port = eventData->data.hdmi_in_connect.port;
                     bool hdmiin_hotplug_conn = eventData->data.hdmi_in_connect.isPortConnected;
@@ -562,7 +549,6 @@ namespace WPEFramework {
                 DisplaySettings::_instance->connectedAudioPortUpdated(dsAUDIOPORT_TYPE_HDMI_ARC, hdmiin_hotplug_conn);
 
                         JsonObject audioOutputPortConfig = DisplaySettings::_instance->getAudioOutputPortConfig();
-
 			if (audioOutputPortConfig.HasLabel("HDMI_ARC")) {
                             try {
                                     arc_port_enabled = audioOutputPortConfig["HDMI_ARC"].Boolean();
@@ -631,7 +617,7 @@ namespace WPEFramework {
 	                }
 
 	            }// HDMI_IN_ARC_PORT_ID
-#endif // ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
+
 		}
 	        break;
             default:
@@ -1173,7 +1159,6 @@ namespace WPEFramework {
 			        int types = dsAUDIOARCSUPPORT_NONE;
                                 aPort.getSupportedARCTypes(&types);
 
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 				if(types & dsAUDIOARCSUPPORT_eARC) {
 				    aPort.setStereoAuto(stereoAuto, persist); //setStereoAuto true
 				}
@@ -1186,7 +1171,6 @@ namespace WPEFramework {
                                         LOGINFO("setSoundMode Auto: requestShortAudioDescriptor successful\n");
                                     }
 				}
-#endif
 			   }
 			}
                         else if (aPort.getType().getId() == device::AudioOutputPortType::kSPDIF)
@@ -2703,7 +2687,6 @@ namespace WPEFramework {
         }
 
 
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
         bool DisplaySettings::setUpHdmiCecSinkArcRouting (bool arcEnable)
         {
             bool success = true;
@@ -2767,7 +2750,7 @@ namespace WPEFramework {
 
             return success;
         }
-#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
+
         uint32_t DisplaySettings::setEnableAudioPort (const JsonObject& parameters, JsonObject& response)
         {   //TODO: Handle other audio ports. Currently only supports HDMI ARC/eARC
             LOGINFOMETHOD();
@@ -2821,7 +2804,6 @@ namespace WPEFramework {
                             if(types & dsAUDIOARCSUPPORT_eARC) {
                                 aPort.setStereoAuto(true,true);
                             }
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                             else if (types & dsAUDIOARCSUPPORT_ARC) {
                                 if (!DisplaySettings::_instance->requestShortAudioDescriptor()) {
                                     LOGERR("DisplaySettings::setEnableAudioPort (ARC): requestShortAudioDescriptor failed !!!\n");;
@@ -2830,7 +2812,6 @@ namespace WPEFramework {
                                     LOGINFO("DisplaySettings::setEnableAudioPort (ARC): requestShortAudioDescriptor successful\n");
                                 }
                             }
-#endif
                         }
                         else{
                             device::AudioStereoMode mode = device::AudioStereoMode::kStereo;  //default to stereo
@@ -2849,7 +2830,6 @@ namespace WPEFramework {
                             aPort.enableARC(dsAUDIOARCSUPPORT_eARC, false);
                         }
                     }
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
                     else if(types & dsAUDIOARCSUPPORT_ARC) {
                         if (!setUpHdmiCecSinkArcRouting (pEnable)) {
                             LOGERR("DisplaySettings::setEnableAudioPort setUpHdmiCecSinkArcRouting failed !!!\n");;
@@ -2858,7 +2838,6 @@ namespace WPEFramework {
                             LOGINFO("DisplaySettings::setEnableAudioPort setUpHdmiCecSinkArcRouting successful");
                         }
 	                }
-#endif
                     else {
                         LOGWARN("DisplaySettings::setEnableAudioPort Connected device doesn't have ARC/eARC capability \n");
                     }
@@ -2884,7 +2863,6 @@ namespace WPEFramework {
             try
             {
 		bool isEnabled =  false;
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
 		//Devicesettings returns exact HDMI ARC audio routing enable status
 		//From thunder plugin's perspective HDMI ARC status must be the last user set value
 		// even if ARC device is not connected. Audio routing will automatically start when the device is connected.
@@ -2897,10 +2875,6 @@ namespace WPEFramework {
                     device::AudioOutputPort aPort = device::Host::getInstance().getAudioOutputPort(audioPort);
                     isEnabled = aPort.isEnabled();
 		}
-#else
-        device::AudioOutputPort aPort = device::Host::getInstance().getAudioOutputPort(audioPort);
-        isEnabled = aPort.isEnabled();
-#endif
                 response["enable"] = isEnabled;
                 LOGWARN ("Thunder sending response to get state enable for audioPort %s is: %s", audioPort.c_str(), (isEnabled?("TRUE"):("FALSE"))); 
             }
@@ -2968,7 +2942,6 @@ namespace WPEFramework {
             }
         }
 
-#ifndef DISPLAY_SETTINGS_DONT_USE_CEC_SINK
         // Event management
         // 1.
         uint32_t DisplaySettings::subscribeForHdmiCecSinkEvent(const char* eventName)
@@ -3110,6 +3083,14 @@ namespace WPEFramework {
         // 5.
         void DisplaySettings::onTimer()
         {
+#ifdef HDMICEC_SINK_NOT_SUPPORTED
+        LOGERR("HdmiCecSink not available; HDMI_ARC events will not be set up");
+        if (m_timer.isActive())
+        {
+            m_timer.stop();
+        }
+        return;
+#endif
 	    m_callMutex.lock();
             static bool isInitDone = false;
             bool pluginActivated = Utils::isPluginActivated(HDMICECSINK_CALLSIGN);
@@ -3169,7 +3150,7 @@ namespace WPEFramework {
          // Event management end
 
         // Thunder plugins communication end
-#endif // not defined DISPLAY_SETTINGS_DONT_USE_CEC_SINK
+
 
         uint32_t DisplaySettings::getTVHDRCapabilities (const JsonObject& parameters, JsonObject& response) 
         {   //sample servicemanager response:
@@ -3455,7 +3436,8 @@ namespace WPEFramework {
             return true;
         }
 
-        static bool parseQBool(const std::string& str) {
+        static bool parseQBool(const std::string& str)
+        {
             // https://doc.qt.io/qt-5/qvariant.html#toBool:
             // 'Returns true if (...) lower-case content is not one of the following: empty, "0" or "false"; otherwise returns false.'
             string lowercase_string;
@@ -3466,7 +3448,19 @@ namespace WPEFramework {
             return !(lowercase_string.empty() || lowercase_string == "false" || lowercase_string == "0");
         }
 
-        uint32_t DisplaySettings::setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response)
+        DisplaySettingsLgiAddons::DisplaySettingsLgiAddons() {
+            registerMethod("setOutputFrameRatePreference", &DisplaySettingsLgiAddons::setOutputFrameRatePreference, this);
+            registerMethod("setAudioProcessingHint", &DisplaySettingsLgiAddons::setAudioProcessingHint, this);
+            registerMethod("getAudioOutputEncoding", &DisplaySettingsLgiAddons::getAudioOutputEncoding, this);
+            registerMethod("getFollowColorSpace", &DisplaySettingsLgiAddons::getFollowColorSpace, this);
+            registerMethod("setFollowColorSpace", &DisplaySettingsLgiAddons::setFollowColorSpace, this);
+            registerMethod("getPreferredOutputColorSpace", &DisplaySettingsLgiAddons::getPreferredOutputColorSpace, this);
+            registerMethod("setPreferredOutputColorSpace", &DisplaySettingsLgiAddons::setPreferredOutputColorSpace, this);
+            registerMethod("getHDRGfxColorSpace", &DisplaySettingsLgiAddons::getHDRGfxColorSpace, this);
+            registerMethod("setHDRGfxColorSpace", &DisplaySettingsLgiAddons::setHDRGfxColorSpace, this);
+        }
+
+        uint32_t DisplaySettingsLgiAddons::setOutputFrameRatePreference(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (const bool followContent);
             LOGINFOMETHOD();
@@ -3475,7 +3469,8 @@ namespace WPEFramework {
             const string videoDisplay = parameters.HasLabel("videoDisplay") ? parameters["videoDisplay"].String() : "HDMI0";
             const bool followContent = parseQBool(parameters["followContent"].String());
 
-            try {
+            try
+            {
                 device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
                 vPort.setOutputFrameRatePreference(followContent);
                 success = true;
@@ -3488,7 +3483,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::setAudioProcessingHint(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::setAudioProcessingHint(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString audioPort, QString audioMode, QString audioDelayMs);
             LOGINFOMETHOD();
@@ -3499,7 +3494,8 @@ namespace WPEFramework {
 
             int64_t _delayMs = -1;
             getDefaultNumberParameter("audioDelayMs", _delayMs, -1);
-            if (_delayMs > -1 && _delayMs <= std::numeric_limits<uint32_t>::max()) {
+            if (_delayMs > -1 && _delayMs <= std::numeric_limits<uint32_t>::max())
+            {
                 const string audioMode = parameters["audioMode"].String();
                 const uint32_t delayMs = _delayMs;
                 try
@@ -3521,7 +3517,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::getAudioOutputEncoding(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString audioPort);
             LOGINFOMETHOD();
@@ -3545,7 +3541,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::getFollowColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::getFollowColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString videoDisplay) const;
             LOGINFOMETHOD();
@@ -3566,7 +3562,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::setFollowColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::setFollowColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString videoDisplay, bool followCOlorSpace);
             LOGINFOMETHOD();
@@ -3590,7 +3586,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::getPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (const QString videoDisplay);
             LOGINFOMETHOD();
@@ -3623,7 +3619,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::setPreferredOutputColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (const QString videoDisplay, const QString colorSpaces);
             LOGINFOMETHOD();
@@ -3638,12 +3634,12 @@ namespace WPEFramework {
             {
                 stringstream strColorSpaces;
                 bool first = true;
-                while (colorSpaces.Next()) {
+                while (colorSpaces.Next())
+                {
                     if (!first) strColorSpaces << ",";
                     first = false;
                     strColorSpaces << colorSpaces.Current().String();
                 }
-                printf("strColorSpaces: %s\n", strColorSpaces.str().c_str()); fflush(stdout);
                 device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(videoDisplay);
                 success = vPort.setPreferredOutputColorSpace(strColorSpaces.str());
             }
@@ -3655,7 +3651,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::getHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString videoPort, int &y, int &cr, int &cb);
             LOGINFOMETHOD();
@@ -3681,7 +3677,7 @@ namespace WPEFramework {
             returnResponse(success);
         }
 
-        uint32_t DisplaySettings::setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
+        uint32_t DisplaySettingsLgiAddons::setHDRGfxColorSpace(const JsonObject& parameters, JsonObject& response)
         {
             // servicemanager params: (QString videoPort, int y, int cr, int cb);
             LOGINFOMETHOD();

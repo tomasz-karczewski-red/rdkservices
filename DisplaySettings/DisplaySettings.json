@@ -5,5 +5,11 @@
   "Platform"
  ],
  "callsign":"org.rdk.DisplaySettings",
- "autostart":false
+ "autostart":false,
+ "configuration":{
+  "root":{
+   "outofprocess":true
+  }
+ }
+
 }
